@@ -1,0 +1,22 @@
+# Docker
+.dockerignore
+node_modules
+dist
+dist-ssr
+*.local
+
+# Env files — NEVER in the image
+.env
+.env.*
+
+# Editor
+.vscode
+.idea
+.DS_Store
+
+# Test output
+coverage
+
+# Git
+.git
+.gitignore
