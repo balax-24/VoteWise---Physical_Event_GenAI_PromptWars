@@ -1,17 +1,13 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { lazy, Suspense, useState, useRef, useEffect } from 'react';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useChat } from '../hooks/useChat';
 import { useAuth } from '../hooks/useAuth';
+import { GUIDED_JOURNEYS, SESSION_REQUEST_LIMIT, STARTER_QUESTIONS } from '../config/appConfig';
+import { trackEvent } from '../lib/analytics';
 
-const STARTER_QUESTIONS = [
-  "How do I register to vote?",
-  "What do I bring to the polling booth?",
-  "How are votes counted?",
-  "What is EVM and how does it work?",
-  "When are results announced?"
-];
+const GuidedJourneyGrid = lazy(() => import('./GuidedJourneyGrid'));
 
 /** Render bot message text as Markdown so lists, bold, etc. display correctly */
 const BotMessage = ({ text }) => (
@@ -28,6 +24,7 @@ const ChatBot = () => {
   const [input, setInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const messagesEndRef = useRef(null);
+  const shouldReduceMotion = useReducedMotion();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -51,7 +48,16 @@ const ChatBot = () => {
   const handleStarterClick = async (question) => {
     if (isLoading || isSubmitting || remainingRequests <= 0) return;
     setIsSubmitting(true);
+    trackEvent('chat_starter_selected', { question });
     await sendMessage(question);
+    setIsSubmitting(false);
+  };
+
+  const handleJourneySelect = async (journey) => {
+    if (isLoading || isSubmitting || remainingRequests <= 0) return;
+    setIsSubmitting(true);
+    trackEvent('guided_journey_started', { journey_id: journey.id });
+    await sendMessage(journey.prompt);
     setIsSubmitting(false);
   };
 
@@ -81,7 +87,7 @@ const ChatBot = () => {
           className="text-xs bg-primary/80 border border-surface/20 px-3 py-1 rounded-full text-accent font-mono"
           aria-label={`${remainingRequests} questions remaining in this session`}
         >
-          {remainingRequests}/10 remaining
+          {remainingRequests}/{SESSION_REQUEST_LIMIT} remaining
         </div>
       </div>
 
@@ -96,10 +102,10 @@ const ChatBot = () => {
           {messages.map((msg, index) => (
             <motion.div
               key={msg.id || index}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
+              initial={shouldReduceMotion ? false : { opacity: 0, y: 10 }}
+              animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
+              transition={{ duration: shouldReduceMotion ? 0 : 0.2 }}
               className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               {msg.sender === 'bot' && (
@@ -146,20 +152,38 @@ const ChatBot = () => {
 
       {/* Starter Questions — only when conversation is fresh */}
       {messages.length <= 1 && (
-        <div className="p-4 border-t border-border bg-surface">
-          <p className="text-xs font-semibold text-muted mb-2">Suggested questions:</p>
-          <div className="flex flex-wrap gap-2">
-            {STARTER_QUESTIONS.map((q) => (
-              <button
-                key={q}
-                onClick={() => handleStarterClick(q)}
-                disabled={isBusy || remainingRequests <= 0}
-                className="text-xs bg-bg hover:bg-accent/10 border border-border hover:border-accent text-primary px-3 py-1.5 rounded-full transition-all duration-200 text-left disabled:opacity-50 disabled:cursor-not-allowed"
-                aria-label={`Ask: ${q}`}
-              >
-                {q}
-              </button>
-            ))}
+        <div className="space-y-4 p-4 border-t border-border bg-surface">
+          <div>
+            <p className="text-xs font-semibold text-muted mb-2">Suggested questions:</p>
+            <div className="flex flex-wrap gap-2">
+              {STARTER_QUESTIONS.map((q) => (
+                <button
+                  key={q}
+                  onClick={() => handleStarterClick(q)}
+                  disabled={isBusy || remainingRequests <= 0}
+                  className="text-xs bg-bg hover:bg-accent/10 border border-border hover:border-accent text-primary px-3 py-1.5 rounded-full transition-all duration-200 text-left disabled:opacity-50 disabled:cursor-not-allowed"
+                  aria-label={`Ask: ${q}`}
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-border bg-bg/50 p-4">
+            <p className="text-sm font-semibold text-primary">Guided election journeys</p>
+            <p className="mt-1 text-xs text-muted">
+              Pick a goal and VoteWise will respond with a step-by-step explanation.
+            </p>
+            <div className="mt-3">
+              <Suspense fallback={<p className="text-xs text-muted">Loading guided journeys…</p>}>
+                <GuidedJourneyGrid
+                  journeys={GUIDED_JOURNEYS}
+                  disabled={isBusy || remainingRequests <= 0}
+                  onSelect={handleJourneySelect}
+                />
+              </Suspense>
+            </div>
           </div>
         </div>
       )}

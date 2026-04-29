@@ -3,15 +3,14 @@ import { auth } from '../firebase/config';
 import { signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 
 export const useAuth = () => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(() => (
+    auth ? null : { uid: 'mock-user-id', isAnonymous: true }
+  ));
+  const [loading, setLoading] = useState(() => Boolean(auth));
   const [error, setError] = useState(null);
 
   useEffect(() => {
     if (!auth) {
-      // Mock user for local dev if Firebase is not configured
-      setUser({ uid: 'mock-user-id', isAnonymous: true });
-      setLoading(false);
       return;
     }
 

@@ -1,18 +1,18 @@
-import React, { useRef } from 'react';
-import { motion, useInView } from 'framer-motion';
+import { useRef } from 'react';
+import { motion, useInView, useReducedMotion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { timelinePhases } from '../data/electionSteps';
+import { trackEvent } from '../lib/analytics';
 
 const TimelineItem = ({ phase, index }) => {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: '-80px' });
   const navigate = useNavigate();
   const isEven = index % 2 === 0;
+  const shouldReduceMotion = useReducedMotion();
 
   const handleLearnMore = () => {
-    if (window.gtag) {
-      window.gtag('event', 'timeline_phase_clicked', { phase: phase.phase });
-    }
+    trackEvent('timeline_phase_clicked', { phase: phase.phase });
     navigate('/chat', {
       state: { initialQuestion: `Tell me more about the "${phase.phase}" phase of the election process.` }
     });
@@ -33,9 +33,9 @@ const TimelineItem = ({ phase, index }) => {
 
         {/* Card */}
         <motion.div
-          initial={{ opacity: 0, x: -30 }}
-          animate={isInView ? { opacity: 1, x: 0 } : {}}
-          transition={{ duration: 0.45, delay: 0.05 }}
+          initial={shouldReduceMotion ? false : { opacity: 0, x: -30 }}
+          animate={isInView ? (shouldReduceMotion ? { opacity: 1 } : { opacity: 1, x: 0 }) : {}}
+          transition={{ duration: shouldReduceMotion ? 0 : 0.45, delay: shouldReduceMotion ? 0 : 0.05 }}
           className="flex-1 bg-surface rounded-xl shadow-md border border-border px-5 py-4 hover:shadow-lg transition-shadow duration-300"
         >
           <h3 className="font-display font-bold text-lg mb-1" style={{ color: phase.color }}>
@@ -59,9 +59,9 @@ const TimelineItem = ({ phase, index }) => {
         <div className="w-5/12">
           {isEven && (
             <motion.div
-              initial={{ opacity: 0, x: -50 }}
-              animate={isInView ? { opacity: 1, x: 0 } : {}}
-              transition={{ duration: 0.5, delay: 0.1 }}
+              initial={shouldReduceMotion ? false : { opacity: 0, x: -50 }}
+              animate={isInView ? (shouldReduceMotion ? { opacity: 1 } : { opacity: 1, x: 0 }) : {}}
+              transition={{ duration: shouldReduceMotion ? 0 : 0.5, delay: shouldReduceMotion ? 0 : 0.1 }}
               className="bg-surface rounded-xl shadow-md border border-border px-6 py-4 hover:shadow-xl transition-shadow duration-300 mr-6"
             >
               <h3 className="font-display font-bold text-lg mb-1" style={{ color: phase.color }}>
@@ -83,9 +83,9 @@ const TimelineItem = ({ phase, index }) => {
         {/* Centre icon */}
         <div className="w-2/12 flex justify-center">
           <motion.div
-            initial={{ scale: 0 }}
-            animate={isInView ? { scale: 1 } : {}}
-            transition={{ duration: 0.3, delay: 0.05 }}
+            initial={shouldReduceMotion ? false : { scale: 0 }}
+            animate={isInView ? (shouldReduceMotion ? { opacity: 1 } : { scale: 1 }) : {}}
+            transition={{ duration: shouldReduceMotion ? 0 : 0.3, delay: shouldReduceMotion ? 0 : 0.05 }}
             className="z-10 flex items-center justify-center w-12 h-12 rounded-full bg-primary shadow-lg"
             style={{ border: `4px solid ${phase.color}` }}
             aria-hidden="true"
@@ -98,9 +98,9 @@ const TimelineItem = ({ phase, index }) => {
         <div className="w-5/12">
           {!isEven && (
             <motion.div
-              initial={{ opacity: 0, x: 50 }}
-              animate={isInView ? { opacity: 1, x: 0 } : {}}
-              transition={{ duration: 0.5, delay: 0.1 }}
+              initial={shouldReduceMotion ? false : { opacity: 0, x: 50 }}
+              animate={isInView ? (shouldReduceMotion ? { opacity: 1 } : { opacity: 1, x: 0 }) : {}}
+              transition={{ duration: shouldReduceMotion ? 0 : 0.5, delay: shouldReduceMotion ? 0 : 0.1 }}
               className="bg-surface rounded-xl shadow-md border border-border px-6 py-4 hover:shadow-xl transition-shadow duration-300 ml-6"
             >
               <h3 className="font-display font-bold text-lg mb-1" style={{ color: phase.color }}>

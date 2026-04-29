@@ -1,8 +1,9 @@
-import React, { useEffect, useRef } from 'react';
+import { lazy, Suspense, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import ChatBot from '../components/ChatBot';
 import { useChat } from '../hooks/useChat';
 import { useAuth } from '../hooks/useAuth';
+
+const ChatBot = lazy(() => import('../components/ChatBot'));
 
 const Chat = () => {
   const location = useLocation();
@@ -35,7 +36,15 @@ const Chat = () => {
         </p>
       </div>
 
-      <ChatBot />
+      <Suspense
+        fallback={
+          <div className="mx-auto flex h-64 max-w-4xl items-center justify-center rounded-xl border border-border bg-surface shadow-sm">
+            <p className="text-sm text-muted">Loading assistant…</p>
+          </div>
+        }
+      >
+        <ChatBot />
+      </Suspense>
     </main>
   );
 };

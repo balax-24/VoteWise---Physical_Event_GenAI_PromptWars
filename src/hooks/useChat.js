@@ -1,18 +1,25 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getGeminiResponseStream, getRemainingRequests } from '../gemini/geminiClient';
 import { saveMessage, getChatHistory, logQuestion } from '../firebase/firestoreHelpers';
+import { trackEvent } from '../lib/analytics';
+
+const WELCOME_MESSAGE = {
+  id: 'welcome',
+  sender: 'bot',
+  text: 'Hello! I am **VoteWise**, your civic assistant. 🗳️\n\nHow can I help you understand the election process today?',
+  timestamp: new Date(),
+};
 
 export const useChat = (userId) => {
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [historyLoading, setHistoryLoading] = useState(true);  // separate flag for initial load
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [error, setError] = useState(null);
   const [remainingRequests, setRemainingRequests] = useState(10);
 
   // Load history once on mount / when userId changes
   useEffect(() => {
     if (!userId) {
-      setHistoryLoading(false);
       return;
     }
 
@@ -24,18 +31,7 @@ export const useChat = (userId) => {
         const history = await getChatHistory(userId);
         if (cancelled) return;
 
-        if (history.length > 0) {
-          setMessages(history);
-        } else {
-          setMessages([
-            {
-              id: 'welcome',
-              sender: 'bot',
-              text: 'Hello! I am **VoteWise**, your civic assistant. 🗳️\n\nHow can I help you understand the election process today?',
-              timestamp: new Date(),
-            }
-          ]);
-        }
+        setMessages(history.length > 0 ? history : [WELCOME_MESSAGE]);
         setRemainingRequests(getRemainingRequests(userId));
       } catch (err) {
         if (cancelled) return;
@@ -46,7 +42,7 @@ export const useChat = (userId) => {
       }
     };
 
-    loadHistory();
+    void loadHistory();
     return () => { cancelled = true; };
   }, [userId]);
 
@@ -96,10 +92,7 @@ export const useChat = (userId) => {
         timestamp: new Date(),
       }).catch(console.error);
 
-      // GA4 event
-      if (window.gtag) {
-        window.gtag('event', 'chat_question_asked', { question: userMessage.text });
-      }
+      trackEvent('chat_question_asked', { question: userMessage.text });
 
     } catch (err) {
       console.error('Chat Error:', err);

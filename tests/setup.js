@@ -20,7 +20,7 @@ Object.defineProperty(window, 'IntersectionObserver', {
   value: IntersectionObserver,
 });
 
-Object.defineProperty(global, 'IntersectionObserver', {
+Object.defineProperty(globalThis, 'IntersectionObserver', {
   writable: true,
   configurable: true,
   value: IntersectionObserver,

@@ -1,5 +1,5 @@
 import { db } from './config';
-import { collection, addDoc, getDocs, query, orderBy, serverTimestamp, doc, setDoc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, orderBy, serverTimestamp } from 'firebase/firestore';
 
 // Save message to user session
 export const saveMessage = async (userId, message) => {

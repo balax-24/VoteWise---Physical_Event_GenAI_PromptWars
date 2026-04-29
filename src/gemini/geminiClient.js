@@ -1,10 +1,12 @@
 // import { GoogleGenAI } from '@google/generative-ai';
 
+import { SESSION_REQUEST_LIMIT } from '../config/appConfig';
+
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
 // Rate limiting state: Map of userId -> request count
 const sessionCounts = new Map();
-const MAX_REQUESTS_PER_SESSION = 10;
+const MAX_REQUESTS_PER_SESSION = SESSION_REQUEST_LIMIT;
 
 const SYSTEM_PROMPT = `You are VoteWise, a friendly and knowledgeable civic assistant that helps citizens understand the election process. You explain:
 - Voter registration steps and eligibility
@@ -20,7 +22,7 @@ Keep answers clear, factual, jargon-free, and encouraging. If asked about specif
 // Sanitize input: Strip HTML tags
 export const sanitizeInput = (text) => {
   if (typeof text !== 'string') return '';
-  return text.replace(/<[^>]*>/g, '');
+  return text.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
 };
 
 export const getGeminiResponseStream = async (userId, userMessage, onChunk) => {
@@ -71,5 +73,8 @@ export const getRequestCount = (userId) => {
 export const getRemainingRequests = (userId) => {
   const count = sessionCounts.get(userId) || 0;
   return Math.max(0, MAX_REQUESTS_PER_SESSION - count);
+};
+export const resetSessionCounts = () => {
+  sessionCounts.clear();
 };
 export { MAX_REQUESTS_PER_SESSION };

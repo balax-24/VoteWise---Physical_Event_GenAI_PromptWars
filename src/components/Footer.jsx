@@ -1,5 +1,5 @@
-import React from 'react';
 import { Link } from 'react-router-dom';
+import { OFFICIAL_LINKS } from '../config/appConfig';
 
 const Footer = () => {
   const year = new Date().getFullYear();
@@ -50,9 +50,9 @@ const Footer = () => {
             <p className="text-xs font-semibold text-surface/50 uppercase tracking-widest mb-3">Official Resources</p>
             <ul className="space-y-2">
               {[
-                { label: 'ECI Voter Portal', href: 'https://voters.eci.gov.in/' },
-                { label: 'Voter Search', href: 'https://electoralsearch.eci.gov.in' },
-                { label: 'Know Your Candidate', href: 'https://www.myneta.info/' },
+                { label: 'ECI Voter Portal', href: OFFICIAL_LINKS.eciPortal },
+                { label: 'Voter Search', href: OFFICIAL_LINKS.voterSearch },
+                { label: 'Know Your Candidate', href: OFFICIAL_LINKS.candidateInfo },
               ].map((r) => (
                 <li key={r.href}>
                   <a
@@ -74,7 +74,7 @@ const Footer = () => {
           <p>© {year} VoteWise. Built for civic empowerment.</p>
           <p className="max-w-sm text-right">
             <strong className="text-surface/70">Disclaimer:</strong> Educational guide only. For official data visit the{' '}
-            <a href="https://voters.eci.gov.in/" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">
+            <a href={OFFICIAL_LINKS.eciPortal} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">
               Election Commission of India
             </a>.
           </p>

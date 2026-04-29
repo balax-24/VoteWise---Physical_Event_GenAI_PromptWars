@@ -1,15 +1,17 @@
-import React, { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import ErrorBoundary from './components/ErrorBoundary';
-import Home from './pages/Home';
-import HowToVote from './pages/HowToVote';
-import Timeline from './pages/Timeline';
-import FindPollingBooth from './pages/FindPollingBooth';
-import Chat from './pages/Chat';
-import NotFound from './pages/NotFound';
+import { trackPageView } from './lib/analytics';
+
+const Home = lazy(() => import('./pages/Home'));
+const HowToVote = lazy(() => import('./pages/HowToVote'));
+const Timeline = lazy(() => import('./pages/Timeline'));
+const FindPollingBooth = lazy(() => import('./pages/FindPollingBooth'));
+const Chat = lazy(() => import('./pages/Chat'));
+const NotFound = lazy(() => import('./pages/NotFound'));
 
 // Page fade transition wrapper
 const PageWrapper = ({ children }) => (
@@ -24,21 +26,45 @@ const PageWrapper = ({ children }) => (
   </motion.div>
 );
 
+const PageLoader = () => (
+  <div className="flex flex-1 items-center justify-center px-4 py-16" aria-live="polite">
+    <div className="flex items-center gap-3 rounded-full border border-border bg-surface px-4 py-3 shadow-sm">
+      <span
+        className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"
+        aria-hidden="true"
+      />
+      <span className="text-sm text-muted">Loading page…</span>
+    </div>
+  </div>
+);
+
+const RouteAnalytics = () => {
+  const location = useLocation();
+
+  useEffect(() => {
+    trackPageView(location.pathname);
+  }, [location.pathname]);
+
+  return null;
+};
+
 // Inner component so we can use useLocation inside Router
 const AppRoutes = () => {
   const location = useLocation();
 
   return (
-    <AnimatePresence mode="wait">
-      <Routes location={location} key={location.pathname}>
-        <Route path="/" element={<PageWrapper><Home /></PageWrapper>} />
-        <Route path="/how-to-vote" element={<PageWrapper><HowToVote /></PageWrapper>} />
-        <Route path="/timeline" element={<PageWrapper><Timeline /></PageWrapper>} />
-        <Route path="/find-booth" element={<PageWrapper><FindPollingBooth /></PageWrapper>} />
-        <Route path="/chat" element={<PageWrapper><Chat /></PageWrapper>} />
-        <Route path="*" element={<PageWrapper><NotFound /></PageWrapper>} />
-      </Routes>
-    </AnimatePresence>
+    <Suspense fallback={<PageLoader />}>
+      <AnimatePresence mode="wait">
+        <Routes location={location} key={location.pathname}>
+          <Route path="/" element={<PageWrapper><Home /></PageWrapper>} />
+          <Route path="/how-to-vote" element={<PageWrapper><HowToVote /></PageWrapper>} />
+          <Route path="/timeline" element={<PageWrapper><Timeline /></PageWrapper>} />
+          <Route path="/find-booth" element={<PageWrapper><FindPollingBooth /></PageWrapper>} />
+          <Route path="/chat" element={<PageWrapper><Chat /></PageWrapper>} />
+          <Route path="*" element={<PageWrapper><NotFound /></PageWrapper>} />
+        </Routes>
+      </AnimatePresence>
+    </Suspense>
   );
 };
 
@@ -72,6 +98,7 @@ function App() {
         </a>
 
         <Navbar />
+        <RouteAnalytics />
 
         <ErrorBoundary>
           <AppRoutes />

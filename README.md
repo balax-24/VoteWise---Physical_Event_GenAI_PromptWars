@@ -54,7 +54,7 @@ Built for the **Gen AI Academy — Civic Education / Election Assistance** verti
 
 ## 🚀 Live Demo
 
-> **Deployed at:** `https://your-project.web.app` *(update after `firebase deploy`)*
+> **Deployed at:** `https://your-project.web.app` *(Will be updated after `firebase deploy`)*
 
 ---
 
@@ -63,14 +63,15 @@ Built for the **Gen AI Academy — Civic Education / Election Assistance** verti
 | Feature | Description |
 |---|---|
 | 🤖 **AI Chatbot** | Streaming Gemini 1.5 Flash responses with Markdown rendering |
+| 🧭 **Guided Journeys** | Goal-based flows for first-time voters, polling day, booth lookup, and counting |
 | 🗓️ **Election Timeline** | Animated 7-phase alternating timeline (desktop & mobile) |
 | 🚶 **Step Guide** | 8-step voting guide with PDF checklist download |
 | 📍 **Polling Finder** | Google Maps embed with location search |
 | 🌐 **Multilingual** | Google Translate for Hindi, Tamil, Telugu, Bengali + 6 more |
-| 💾 **Chat History** | Conversations saved to Firestore, restored on reload |
-| 📊 **Analytics** | GA4 custom events for all key user interactions |
-| ♿ **Accessibility** | axe-clean, ARIA roles, skip links, keyboard nav |
-| 🔒 **Security** | CSP headers, rate limiting, input sanitisation |
+| 💾 **Chat History** | Conversations saved to Firestore and restored on reload |
+| 📊 **Analytics** | Shared GA4 event tracking for journeys, timeline clicks, booth searches, and chat usage |
+| ♿ **Accessibility** | axe-tested pages, ARIA roles, skip links, keyboard navigation |
+| 🔒 **Security** | CSP headers, anonymous auth, input sanitisation, session guardrails |
 | 📱 **Responsive** | Mobile-first, 320px → 1440px |
 
 ---
@@ -80,11 +81,11 @@ Built for the **Gen AI Academy — Civic Education / Election Assistance** verti
 ### Frontend
 | Library | Version | Purpose |
 |---|---|---|
-| React | 18 | UI framework |
+| React | 19 | UI framework |
 | Vite | 8 | Build tool + dev server |
 | Tailwind CSS | v4 | Utility-first styling |
 | Framer Motion | latest | Animations & transitions |
-| React Router | v6 | Client-side routing |
+| React Router | v7 | Client-side routing |
 | react-markdown | latest | Render Gemini markdown responses |
 | jsPDF | latest | PDF checklist export |
 
@@ -103,7 +104,7 @@ Built for the **Gen AI Academy — Civic Education / Election Assistance** verti
 | **Firebase Auth** | Anonymous session tracking |
 | **Google Translate** | Multilingual UI (10 Indian languages) |
 | **Google Maps Embed** | Polling booth location search |
-| **Google Analytics (GA4)** | User engagement tracking |
+| **Google Analytics (GA4)** | Shared tracking for key assistant decisions and learning flows |
 
 ---
 
@@ -112,7 +113,7 @@ Built for the **Gen AI Academy — Civic Education / Election Assistance** verti
 ```
 +----------------------------------------------------------------+
 |                        VoteWise (SPA)                          |
-|   React 18 + Vite + Tailwind v4 + Framer Motion               |
+|   React 19 + Vite + Tailwind v4 + Framer Motion               |
 +----------------------------------------------------------------+
          |                    |                   |
          ▼                    ▼                   ▼
@@ -127,20 +128,26 @@ Built for the **Gen AI Academy — Civic Education / Election Assistance** verti
                     |  Auth (anon)|
                     +-------------+
 
-Side services: Google Translate Widget | Google Analytics (GA4)
+Side services: Google Translate Widget | Google Analytics (GA4) | Guided Journey prompts
 ```
 
 **Data flow for a chat message:**
 ```
-User types → sanitizeInput() → rate limit check → Gemini API (stream)
+User types or picks a guided journey → sanitizeInput() → rate limit check → Gemini API (stream)
      │                                                    │
      ▼                                                    ▼
 Firestore (save user msg)                   onChunk() → state update → UI re-render
                                                          │
                                               Firestore (save bot msg, async)
                                                          │
-                                                    GA4 event fired
+                                      Shared analytics helper fires GA4 events
 ```
+
+**Performance and maintainability highlights:**
+- Route-level code splitting keeps non-chat pages lighter.
+- `jspdf` and guided journey UI are lazy-loaded only when needed.
+- Shared `appConfig` and `analytics` utilities reduce duplicated strings and tracking logic.
+- CI validates lint, tests, and production builds on every push to `main`.
 
 ---
 
@@ -197,8 +204,6 @@ VITE_MAPS_API_KEY=your_google_maps_api_key
 # Google Analytics
 VITE_GA_MEASUREMENT_ID=G-XXXXXXXXXX
 ```
-
-> ⚠️ **Never commit your `.env` file.** It is already in `.gitignore`.
 
 ---
 
@@ -297,10 +302,13 @@ votewise/
 │   │   ├── ErrorBoundary.jsx    ← Runtime error catch
 │   │   ├── FAQSection.jsx       ← Accordion FAQ (Firestore-enriched)
 │   │   ├── Footer.jsx           ← Site footer with nav + official links
+│   │   ├── GuidedJourneyGrid.jsx← Goal-based assistant quick-start cards
 │   │   ├── LanguageSwitcher.jsx ← Google Translate widget
 │   │   ├── Navbar.jsx           ← Responsive navigation bar
 │   │   ├── PollingFinder.jsx    ← Maps embed + search
 │   │   └── StepGuide.jsx        ← 8-step voting guide + PDF
+│   ├── config/
+│   │   └── appConfig.js         ← Shared prompts, limits, and official links
 │   ├── pages/
 │   │   ├── Chat.jsx
 │   │   ├── FindPollingBooth.jsx
@@ -316,6 +324,8 @@ votewise/
 │   ├── hooks/
 │   │   ├── useAuth.js           ← Anonymous auth hook
 │   │   └── useChat.js           ← Chat state + streaming + Firestore
+│   ├── lib/
+│   │   └── analytics.js         ← Shared GA4 event + pageview helpers
 │   ├── data/
 │   │   └── electionSteps.js     ← Timeline phases + voting steps data
 │   ├── App.jsx                  ← Router + AnimatePresence + ErrorBoundary
@@ -325,9 +335,12 @@ votewise/
 ├── tests/
 │   ├── accessibility.test.jsx
 │   ├── ChatBot.test.jsx
+│   ├── ElectionTimeline.test.jsx
 │   ├── electionSteps.test.js
 │   ├── firestoreHelpers.test.js
 │   ├── geminiClient.test.js
+│   ├── Home.test.jsx
+│   ├── PollingFinder.test.jsx
 │   └── setup.js
 ├── .env.example
 ├── .firebaserc
@@ -350,13 +363,17 @@ npm test
 
 | Test File | What It Tests |
 |---|---|
-| `geminiClient.test.js` | Input sanitisation, rate limit constant |
+| `geminiClient.test.js` | Input sanitisation, request counters, session reset helpers |
 | `electionSteps.test.js` | Data integrity — 7 phases, 8 steps, required fields |
 | `firestoreHelpers.test.js` | `saveMessage` + `getChatHistory` with mocked Firestore |
-| `ChatBot.test.jsx` | Renders welcome message, form submit calls `sendMessage` |
+| `ChatBot.test.jsx` | Welcome state, guided journeys, form submit, and session-limit UI |
+| `ElectionTimeline.test.jsx` | Contextual navigation from timeline into chat and analytics tracking |
+| `Home.test.jsx` | Guided journey entry points on the landing page |
+| `PollingFinder.test.jsx` | Fallback mode and GA4 search event tracking |
 | `accessibility.test.jsx` | Zero axe violations on Home and HowToVote pages |
+| `CI workflow` | Runs lint, tests, and build on every push to `main` |
 
-**Results:** 13/13 tests passing ✅
+**Results:** 21/21 tests passing locally ✅
 
 ---
 
@@ -376,6 +393,8 @@ VoteWise is built to WCAG 2.1 AA standards:
 - ✅ Keyboard navigable (Tab, Enter, Escape)
 - ✅ Responsive from 320px mobile to 1440px desktop
 - ✅ Axe-clean on all pages (verified by automated tests)
+- ✅ Loading and error states announced with assistive-friendly markup
+- ✅ Reduced-motion-friendly transitions for users who prefer less animation
 
 ---
 
@@ -399,7 +418,7 @@ VoteWise is built to WCAG 2.1 AA standards:
 - [ ] **Multi-state election data** — dynamically load state-specific timelines and booth locators
 - [ ] **User accounts** — optional login to persist history across devices
 - [ ] **Admin dashboard** — view FAQ analytics and most-asked questions
-- [ ] **Code splitting** — lazy-load heavy dependencies (jsPDF, react-markdown) to reduce initial bundle size
+- [x] **Code splitting** — pages, guided journeys, and PDF generation are lazy-loaded to reduce initial bundle size
 - [ ] **VVPAT explanation** — animated explainer for voter-verifiable paper audit trail
 - [ ] **RTL support** — for Urdu language direction
 

@@ -1,6 +1,6 @@
-import React from 'react';
 import { Link } from 'react-router-dom';
 import FAQSection from '../components/FAQSection';
+import { GUIDED_JOURNEYS } from '../config/appConfig';
 
 const Home = () => {
   return (
@@ -31,6 +31,31 @@ const Home = () => {
               How to Vote
             </Link>
           </div>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-4 py-14">
+        <div className="mb-8 flex flex-col gap-2 text-center">
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent">Guided Assistant</p>
+          <h2 className="font-display text-3xl font-bold text-primary">Choose a voting goal, then let VoteWise guide the next step</h2>
+          <p className="mx-auto max-w-2xl text-sm text-muted">
+            These flows make the assistant more practical for first-time voters, polling-day prep, and election result understanding.
+          </p>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {GUIDED_JOURNEYS.map((journey) => (
+            <Link
+              key={journey.id}
+              to="/chat"
+              state={{ initialQuestion: journey.prompt }}
+              className="rounded-2xl border border-border bg-surface p-5 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-accent hover:shadow-lg"
+            >
+              <p className="text-sm font-semibold text-primary">{journey.title}</p>
+              <p className="mt-2 text-sm leading-relaxed text-muted">{journey.description}</p>
+              <span className="mt-4 inline-flex text-xs font-semibold text-accent">{journey.cta} →</span>
+            </Link>
+          ))}
         </div>
       </section>
 

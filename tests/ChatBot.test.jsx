@@ -1,7 +1,7 @@
-import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import ChatBot from '../src/components/ChatBot';
+import { GUIDED_JOURNEYS } from '../src/config/appConfig';
 
 // Mock the hooks
 vi.mock('../src/hooks/useAuth', () => ({
@@ -9,17 +9,32 @@ vi.mock('../src/hooks/useAuth', () => ({
 }));
 
 const mockSendMessage = vi.fn();
+let mockChatState = {
+  messages: [{ id: '1', sender: 'bot', text: 'Hello' }],
+  sendMessage: mockSendMessage,
+  isLoading: false,
+  historyLoading: false,
+  error: null,
+  remainingRequests: 10,
+};
+
 vi.mock('../src/hooks/useChat', () => ({
-  useChat: () => ({
-    messages: [{ id: '1', sender: 'bot', text: 'Hello' }],
-    sendMessage: mockSendMessage,
-    isLoading: false,
-    error: null,
-    remainingRequests: 10
-  })
+  useChat: () => mockChatState
 }));
 
 describe('ChatBot Component', () => {
+  beforeEach(() => {
+    mockSendMessage.mockReset();
+    mockChatState = {
+      messages: [{ id: '1', sender: 'bot', text: 'Hello' }],
+      sendMessage: mockSendMessage,
+      isLoading: false,
+      historyLoading: false,
+      error: null,
+      remainingRequests: 10,
+    };
+  });
+
   it('renders welcome message', () => {
     render(<ChatBot />);
     expect(screen.getByText('Hello')).toBeInTheDocument();
@@ -34,5 +49,25 @@ describe('ChatBot Component', () => {
     fireEvent.click(button);
 
     expect(mockSendMessage).toHaveBeenCalledWith('How do I vote?');
+  });
+
+  it('starts a guided journey from the quick actions panel', async () => {
+    render(<ChatBot />);
+
+    fireEvent.click(await screen.findByRole('button', { name: `Start guided journey: ${GUIDED_JOURNEYS[0].title}` }));
+
+    expect(mockSendMessage).toHaveBeenCalledWith(GUIDED_JOURNEYS[0].prompt);
+  });
+
+  it('shows the session limit state when no requests remain', () => {
+    mockChatState = {
+      ...mockChatState,
+      remainingRequests: 0,
+    };
+
+    render(<ChatBot />);
+
+    expect(screen.getByPlaceholderText('Session limit reached.')).toBeDisabled();
+    expect(screen.getByText('0/10 remaining')).toBeInTheDocument();
   });
 });

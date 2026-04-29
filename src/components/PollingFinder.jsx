@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
+import { OFFICIAL_LINKS } from '../config/appConfig';
+import { trackEvent } from '../lib/analytics';
 
 const PollingFinder = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -11,12 +13,9 @@ const PollingFinder = () => {
     
     setEmbedLocation(searchQuery.trim());
 
-    // Track Analytics (GA4)
-    if (window.gtag) {
-      window.gtag('event', 'polling_booth_searched', {
-        location: searchQuery.trim(),
-      });
-    }
+    trackEvent('polling_booth_searched', {
+      location: searchQuery.trim(),
+    });
   };
 
   // If key is missing, use a fallback view or instructional message
@@ -61,7 +60,9 @@ const PollingFinder = () => {
             frameBorder="0"
             style={{ border: 0 }}
             src={mapUrl}
+            loading="lazy"
             allowFullScreen
+            referrerPolicy="no-referrer-when-downgrade"
             aria-label="Google Map showing polling booths"
           />
         ) : (
@@ -86,7 +87,7 @@ const PollingFinder = () => {
           <p className="text-xs text-muted">For your exact designated booth assignment, always verify via the official ECI voter portal.</p>
         </div>
         <a
-          href="https://electoralsearch.eci.gov.in"
+          href={OFFICIAL_LINKS.voterSearch}
           target="_blank"
           rel="noopener noreferrer"
           className="bg-accent hover:bg-accent-dark text-primary font-semibold px-4 py-2 rounded text-xs shadow-sm transition-colors duration-200 text-center"

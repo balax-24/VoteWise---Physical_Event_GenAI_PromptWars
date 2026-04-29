@@ -1,4 +1,3 @@
-import React from 'react';
 import ElectionTimeline from '../components/ElectionTimeline';
 
 const Timeline = () => {
