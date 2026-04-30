@@ -1,103 +1,129 @@
-import { useState } from 'react';
+/**
+ * @file PollingFinder — Google Maps embed for finding polling booths.
+ *
+ * If `VITE_MAPS_API_KEY` is missing or a placeholder, a graceful fallback
+ * panel is shown with a direct link to the ECI electoral search portal.
+ * Searches are debounced to prevent rapid iframe reloads.
+ *
+ * @module components/PollingFinder
+ */
+
+import { useState, useRef, useCallback, useMemo, memo } from 'react';
+import PropTypes from 'prop-types';
 import { OFFICIAL_LINKS } from '../config/appConfig';
 import { trackEvent } from '../lib/analytics';
 
-const PollingFinder = () => {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [embedLocation, setEmbedLocation] = useState('India');
-  const MAPS_API_KEY = import.meta.env.VITE_MAPS_API_KEY;
+/** Debounce delay for search in milliseconds. */
+const DEBOUNCE_MS = 400;
 
-  const handleSearch = (e) => {
+const PollingFinder = memo(function PollingFinder() {
+  const apiKey = import.meta.env.VITE_MAPS_API_KEY;
+  const hasValidKey = apiKey && !apiKey.includes('your_') && !apiKey.includes('YOUR_');
+
+  const [location, setLocation] = useState('');
+  const [searchedLocation, setSearchedLocation] = useState('');
+  const debounceRef = useRef(null);
+
+  /** Build the Maps embed URL. Only recomputed when searchedLocation changes. */
+  const mapSrc = useMemo(() => {
+    if (!searchedLocation || !hasValidKey) return '';
+    return `https://www.google.com/maps/embed/v1/search?key=${apiKey}&q=polling+booth+near+${encodeURIComponent(searchedLocation)}`;
+  }, [searchedLocation, hasValidKey, apiKey]);
+
+  /** Debounced search handler */
+  const handleSearch = useCallback((e) => {
     e.preventDefault();
-    if (!searchQuery.trim()) return;
-    
-    setEmbedLocation(searchQuery.trim());
+    const trimmed = location.trim();
+    if (!trimmed) return;
 
-    trackEvent('polling_booth_searched', {
-      location: searchQuery.trim(),
-    });
-  };
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      trackEvent('polling_booth_searched', { location: trimmed });
+      setSearchedLocation(trimmed);
+    }, DEBOUNCE_MS);
+  }, [location]);
 
-  // If key is missing, use a fallback view or instructional message
-  const hasValidKey = MAPS_API_KEY && MAPS_API_KEY !== 'your_maps_key';
-  
-  // Construct URL
-  const mapUrl = hasValidKey
-    ? `https://www.google.com/maps/embed/v1/search?key=${MAPS_API_KEY}&q=polling+booth+near+${encodeURIComponent(embedLocation)}`
-    : `https://www.google.com/maps/embed/v1/place?key=MOCK_KEY&q=${encodeURIComponent(embedLocation)}`; // Fallback pattern
+  /** Immediate search (for form submit) */
+  const handleSubmit = useCallback((e) => {
+    e.preventDefault();
+    const trimmed = location.trim();
+    if (!trimmed) return;
+
+    clearTimeout(debounceRef.current);
+    trackEvent('polling_booth_searched', { location: trimmed });
+    setSearchedLocation(trimmed);
+  }, [location]);
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8 bg-surface rounded-xl shadow-lg border border-border">
-      <h2 className="text-2xl font-display font-bold text-primary mb-2">Polling Booth Finder</h2>
-      <p className="text-sm text-muted mb-6">Search your area to explore polling booths near you.</p>
+    <div className="max-w-4xl mx-auto px-4 py-8">
+      <h2 className="text-2xl font-display font-bold text-primary mb-6 text-center">Find Your Polling Booth</h2>
 
-      {/* Search Bar */}
-      <form onSubmit={handleSearch} className="flex space-x-4 mb-6">
+      <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-4 mb-8">
         <input
           type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Enter your city, pincode, or area..."
+          value={location}
+          onChange={(e) => setLocation(e.target.value)}
+          placeholder="Enter city, pincode, or area name"
           className="flex-1 border border-border rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-accent focus:border-accent outline-none"
           aria-label="Search location for polling booths"
         />
         <button
           type="submit"
-          className="bg-primary hover:bg-primary-dark text-surface px-6 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
-          aria-label="Search"
+          className="bg-accent hover:bg-amber-500 text-primary font-semibold px-6 py-2 rounded-lg text-sm shadow transition-colors duration-200"
         >
           Search
         </button>
       </form>
 
-      {/* Map Embed Container */}
-      <div className="relative w-full h-[400px] rounded-lg overflow-hidden border border-border bg-bg flex items-center justify-center">
-        {hasValidKey ? (
-          <iframe
-            title="Google Maps Polling Booth Finder"
-            width="100%"
-            height="100%"
-            frameBorder="0"
-            style={{ border: 0 }}
-            src={mapUrl}
-            loading="lazy"
-            allowFullScreen
-            referrerPolicy="no-referrer-when-downgrade"
-            aria-label="Google Map showing polling booths"
-          />
-        ) : (
-          <div className="text-center p-6 max-w-md">
-            <span className="text-4xl mb-4 block" role="img" aria-label="Map">🗺️</span>
-            <p className="text-sm font-semibold text-primary mb-2">Google Maps Integration Mode</p>
-            <p className="text-xs text-muted mb-4">
-              A valid Google Maps API Key is required to load the live map. (Configured location: "{embedLocation}")
-            </p>
-            <div className="bg-amber-50 text-amber-800 p-3 rounded text-xs border border-amber-200">
-              <strong>Note:</strong> In production, the embed will display: <br/>
-              <code className="text-[10px] break-all">{`https://www.google.com/maps/embed/v1/search?key=***&q=polling+booth+near+${embedLocation}`}</code>
+      {/* Map embed or fallback */}
+      {hasValidKey ? (
+        <div className="rounded-xl overflow-hidden shadow-lg border border-border">
+          {searchedLocation ? (
+            <iframe
+              title="Polling booth map results"
+              src={mapSrc}
+              className="w-full h-[400px] md:h-[500px]"
+              allowFullScreen
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+            />
+          ) : (
+            <div className="bg-bg/50 h-[300px] flex items-center justify-center">
+              <p className="text-sm text-muted">Enter a location above to search for nearby polling booths</p>
             </div>
-          </div>
-        )}
-      </div>
-
-      {/* Official Link Note */}
-      <div className="mt-6 p-4 bg-bg rounded-lg border border-border flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
-        <div>
-          <p className="text-xs font-semibold text-primary mb-1">Important Notice:</p>
-          <p className="text-xs text-muted">For your exact designated booth assignment, always verify via the official ECI voter portal.</p>
+          )}
         </div>
+      ) : (
+        <div className="bg-bg/50 rounded-xl border border-border p-8 text-center">
+          <span className="text-4xl mb-4 block" role="img" aria-label="Map">🗺️</span>
+          <h3 className="font-display font-semibold text-lg text-primary mb-2">Google Maps Integration Mode</h3>
+          <p className="text-sm text-muted mb-4">
+            A valid Google Maps API Key is required to display the interactive map. You can still find your polling booth using the official ECI portal.
+          </p>
+          <a
+            href={OFFICIAL_LINKS.voterSearch}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-block bg-accent hover:bg-amber-500 text-primary font-semibold px-6 py-2 rounded-lg text-sm shadow transition-colors duration-200"
+          >
+            Visit Official Voter Search ↗
+          </a>
+        </div>
+      )}
+
+      {/* ECI portal link */}
+      <div className="mt-6 text-center">
         <a
           href={OFFICIAL_LINKS.voterSearch}
           target="_blank"
           rel="noopener noreferrer"
-          className="bg-accent hover:bg-accent-dark text-primary font-semibold px-4 py-2 rounded text-xs shadow-sm transition-colors duration-200 text-center"
-          aria-label="Visit official ECI voter portal"
+          className="text-sm text-accent hover:underline font-semibold"
         >
-          Visit Official Portal
+          Or search on the official ECI Electoral Search Portal ↗
         </a>
       </div>
     </div>
   );
-};
+});
 
 export default PollingFinder;

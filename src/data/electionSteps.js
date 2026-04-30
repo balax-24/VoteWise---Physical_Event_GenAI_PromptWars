@@ -1,3 +1,18 @@
+/**
+ * @file Election process data — timeline phases and voting-day step guide.
+ *
+ * @module data/electionSteps
+ */
+
+/**
+ * @typedef {Object} TimelinePhase
+ * @property {string} phase       - Display name of the phase
+ * @property {string} icon        - Emoji icon
+ * @property {string} description - One-sentence summary
+ * @property {string} color       - Hex colour for accent styling
+ */
+
+/** @type {TimelinePhase[]} The 7 phases of an Indian general election. */
 export const timelinePhases = [
   { 
     phase: "Announcement", 

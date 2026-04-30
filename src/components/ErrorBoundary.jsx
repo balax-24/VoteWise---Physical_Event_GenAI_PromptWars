@@ -1,4 +1,14 @@
+/**
+ * @file ErrorBoundary — React class component that catches runtime errors.
+ *
+ * Renders a friendly fallback UI instead of a blank screen and logs errors
+ * to the console. In development mode, displays the raw error stack.
+ *
+ * @module components/ErrorBoundary
+ */
+
 import React from 'react';
+import PropTypes from 'prop-types';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -46,5 +56,10 @@ class ErrorBoundary extends React.Component {
     return this.props.children;
   }
 }
+
+ErrorBoundary.propTypes = {
+  /** React component tree to wrap with error protection */
+  children: PropTypes.node.isRequired,
+};
 
 export default ErrorBoundary;

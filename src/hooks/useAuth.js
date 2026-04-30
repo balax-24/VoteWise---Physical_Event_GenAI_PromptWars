@@ -1,7 +1,20 @@
+/**
+ * @file useAuth — Firebase anonymous authentication hook.
+ *
+ * On mount, signs in anonymously if no user exists. Subscribes to
+ * `onAuthStateChanged` to keep the user object in sync.
+ * Falls back to a mock user when Firebase is not configured.
+ *
+ * @module hooks/useAuth
+ */
+
 import { useState, useEffect } from 'react';
 import { auth } from '../firebase/config';
 import { signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 
+/**
+ * @returns {{ user: import('firebase/auth').User|null, loading: boolean, error: Error|null }}
+ */
 export const useAuth = () => {
   const [user, setUser] = useState(() => (
     auth ? null : { uid: 'mock-user-id', isAnonymous: true }

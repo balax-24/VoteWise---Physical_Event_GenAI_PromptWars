@@ -1,39 +1,110 @@
-import { lazy, Suspense, useState, useRef, useEffect } from 'react';
+/**
+ * @file ChatBot — Gemini-powered conversational civic assistant.
+ *
+ * Features:
+ * - Streaming responses chunk‑by‑chunk from Gemini 1.5 Flash
+ * - Markdown rendering for bot replies (react‑markdown + remark‑gfm)
+ * - Starter questions and guided election journeys
+ * - Rate‑limit display and double‑submit guard
+ * - Accessible chat log with `role="log"` + `aria-live="polite"`
+ *
+ * @module components/ChatBot
+ */
+
+import { lazy, Suspense, useState, useRef, useEffect, memo, useCallback } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import PropTypes from 'prop-types';
 import { useChat } from '../hooks/useChat';
 import { useAuth } from '../hooks/useAuth';
 import { GUIDED_JOURNEYS, SESSION_REQUEST_LIMIT, STARTER_QUESTIONS } from '../config/appConfig';
 import { trackEvent } from '../lib/analytics';
+import { exportChatAsText } from '../lib/chatExport';
 
 const GuidedJourneyGrid = lazy(() => import('./GuidedJourneyGrid'));
 
-/** Render bot message text as Markdown so lists, bold, etc. display correctly */
-const BotMessage = ({ text }) => (
-  <div className="text-sm prose prose-sm max-w-none prose-p:my-1 prose-ul:my-1 prose-li:my-0.5 prose-strong:text-primary">
-    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-      {text}
-    </ReactMarkdown>
-  </div>
-);
+const isSafeMarkdownHref = (href) => {
+  if (!href) return false;
+  try {
+    const url = new URL(href, window.location.origin);
+    return ['http:', 'https:', 'mailto:'].includes(url.protocol);
+  } catch {
+    return false;
+  }
+};
 
-const ChatBot = () => {
+/**
+ * Renders bot message text as Markdown so lists, bold, etc. display correctly.
+ * Wrapped in React.memo to avoid re-parsing unchanged markdown strings.
+ * @param {Object} props
+ * @param {string} props.text - Markdown text to render
+ */
+const BotMessage = memo(function BotMessage({ text }) {
+  return (
+    <div className="text-sm prose prose-sm max-w-none prose-p:my-1 prose-ul:my-1 prose-li:my-0.5 prose-strong:text-primary">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          a({ href, children }) {
+            if (!isSafeMarkdownHref(href)) {
+              return <span>{children}</span>;
+            }
+            return (
+              <a href={href} target="_blank" rel="noopener noreferrer">
+                {children}
+              </a>
+            );
+          },
+        }}
+      >
+        {text}
+      </ReactMarkdown>
+    </div>
+  );
+});
+
+BotMessage.propTypes = {
+  text: PropTypes.string.isRequired,
+};
+
+/**
+ * Main chatbot component. Self-contained — manages its own auth and chat state.
+ * @param {Object}      props
+ * @param {string|null} props.initialQuestion - Pre-seeded question from guided journeys
+ */
+const ChatBot = ({ initialQuestion }) => {
   const { user, loading: authLoading } = useAuth();
   const { messages, sendMessage, isLoading, historyLoading, error, remainingRequests } = useChat(user?.uid);
   const [input, setInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const messagesEndRef = useRef(null);
   const shouldReduceMotion = useReducedMotion();
+  const firedInitialRef = useRef(false);
 
-  const scrollToBottom = () => {
+  /** Scroll chat to newest message (throttled by React batching). */
+  const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  }, []);
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, scrollToBottom]);
 
+  // Fire the initial question once after auth + history are ready
+  useEffect(() => {
+    if (authLoading || historyLoading) return;
+    if (!user?.uid) return;
+    if (!initialQuestion) return;
+    if (firedInitialRef.current) return;
+
+    firedInitialRef.current = true;
+    sendMessage(initialQuestion);
+    // Clear navigation state so it won't replay on browser back/forward
+    window.history.replaceState({}, document.title);
+  }, [authLoading, historyLoading, user?.uid, initialQuestion, sendMessage]);
+
+  /** @param {React.FormEvent} e */
   const handleSubmit = async (e) => {
     e.preventDefault();
     const trimmed = input.trim();
@@ -45,21 +116,23 @@ const ChatBot = () => {
     setIsSubmitting(false);
   };
 
-  const handleStarterClick = async (question) => {
+  /** @param {string} question */
+  const handleStarterClick = useCallback(async (question) => {
     if (isLoading || isSubmitting || remainingRequests <= 0) return;
     setIsSubmitting(true);
     trackEvent('chat_starter_selected', { question });
     await sendMessage(question);
     setIsSubmitting(false);
-  };
+  }, [isLoading, isSubmitting, remainingRequests, sendMessage]);
 
-  const handleJourneySelect = async (journey) => {
+  /** @param {{ id: string, prompt: string }} journey */
+  const handleJourneySelect = useCallback(async (journey) => {
     if (isLoading || isSubmitting || remainingRequests <= 0) return;
     setIsSubmitting(true);
     trackEvent('guided_journey_started', { journey_id: journey.id });
     await sendMessage(journey.prompt);
     setIsSubmitting(false);
-  };
+  }, [isLoading, isSubmitting, remainingRequests, sendMessage]);
 
   if (authLoading || historyLoading) {
     return (
@@ -83,11 +156,24 @@ const ChatBot = () => {
             <p className="text-xs text-surface/80">AI-powered civic guide</p>
           </div>
         </div>
-        <div
-          className="text-xs bg-primary/80 border border-surface/20 px-3 py-1 rounded-full text-accent font-mono"
-          aria-label={`${remainingRequests} questions remaining in this session`}
-        >
-          {remainingRequests}/{SESSION_REQUEST_LIMIT} remaining
+        <div className="flex items-center gap-2">
+          {/* Export button */}
+          {messages.length > 1 && (
+            <button
+              onClick={() => exportChatAsText(messages)}
+              className="text-xs bg-surface/10 hover:bg-surface/20 border border-surface/20 px-3 py-1 rounded-full text-surface/90 transition-colors duration-200"
+              aria-label="Download chat as text file"
+              title="Export conversation"
+            >
+              📥 Export
+            </button>
+          )}
+          <div
+            className="text-xs bg-primary/80 border border-surface/20 px-3 py-1 rounded-full text-accent font-mono"
+            aria-label={`${remainingRequests} questions remaining in this session`}
+          >
+            {remainingRequests}/{SESSION_REQUEST_LIMIT} remaining
+          </div>
         </div>
       </div>
 
@@ -215,6 +301,15 @@ const ChatBot = () => {
       </form>
     </div>
   );
+};
+
+ChatBot.propTypes = {
+  /** Optional pre-seeded question from guided journey links */
+  initialQuestion: PropTypes.string,
+};
+
+ChatBot.defaultProps = {
+  initialQuestion: null,
 };
 
 export default ChatBot;

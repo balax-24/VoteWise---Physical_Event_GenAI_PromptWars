@@ -4,23 +4,71 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="VoteWise — An AI-powered interactive election guide helping Indian citizens understand the voting process, find polling booths, and access civic education resources." />
+    <meta name="theme-color" content="#1a3a5c" />
+    <meta name="author" content="VoteWise Team" />
+    <meta name="keywords" content="Indian elections, voting guide, civic education, ECI, election process, polling booth finder, voter registration, AI assistant" />
     <title>VoteWise — Your Election Guide</title>
-    
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="VoteWise" />
+
+    <!-- Open Graph (Facebook/LinkedIn) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="VoteWise — Your AI-Powered Election Guide" />
+    <meta property="og:description" content="Navigate the Indian election process with an interactive timeline, AI civic assistant, polling booth finder, and step-by-step voting guides." />
+    <meta property="og:site_name" content="VoteWise" />
+    <meta property="og:locale" content="en_IN" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="VoteWise — Your AI-Powered Election Guide" />
+    <meta name="twitter:description" content="Navigate the Indian election process with an interactive timeline, AI civic assistant, polling booth finder, and step-by-step voting guides." />
+
+    <!-- Structured Data (JSON-LD) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "VoteWise",
+      "description": "AI-powered interactive election guide for civic education in India",
+      "applicationCategory": "EducationalApplication",
+      "operatingSystem": "Any",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "INR"
+      },
+      "author": {
+        "@type": "Organization",
+        "name": "VoteWise Team"
+      },
+      "featureList": [
+        "AI Civic Assistant powered by Gemini",
+        "Interactive Election Timeline",
+        "Step-by-step Voting Guide with PDF download",
+        "Google Maps Polling Booth Finder",
+        "Multi-language support (10 Indian languages)",
+        "Voter Eligibility Calculator"
+      ]
+    }
+    </script>
+
+    <!-- Resource hints for critical third-party domains -->
+    <link rel="dns-prefetch" href="https://firestore.googleapis.com" />
+    <link rel="dns-prefetch" href="https://generativelanguage.googleapis.com" />
+    <link rel="dns-prefetch" href="https://www.google.com" />
+    <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
     <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet">
     
-    <!-- Google Translate -->
-    <script>
-      function googleTranslateElementInit() {
-        new google.translate.TranslateElement(
-          { pageLanguage: 'en', includedLanguages: 'hi,ta,te,bn,mr,gu,kn,ml,pa,ur' },
-          'google_translate_element'
-        );
-      }
-    </script>
-    <script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
   </head>
   <body class="bg-[#f8f6f1] text-[#1c1c1e]">
     <div id="root"></div>

@@ -1,15 +1,33 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+/**
+ * @file StepGuide — 8-step animated voting day guide with PDF export.
+ *
+ * Cards animate in staggered as they enter the viewport. When all 8 cards
+ * have been seen, a GA4 `step_guide_completed` event fires (once per session).
+ *
+ * @module components/StepGuide
+ */
+
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { motion, useInView, useReducedMotion } from 'framer-motion';
+import PropTypes from 'prop-types';
 import { votingSteps } from '../data/electionSteps';
 import { OFFICIAL_LINKS } from '../config/appConfig';
 import { trackEvent } from '../lib/analytics';
 
-const StepCard = ({ step, index, onVisible }) => {
+/**
+ * Individual step card — reports visibility to the parent.
+ * Wrapped in React.memo so only the card that enters view re-renders.
+ *
+ * @param {Object} props
+ * @param {{ id: number, title: string, description: string, icon: string, link?: string }} props.step
+ * @param {number}   props.index     - Zero-based position in the grid
+ * @param {Function} props.onVisible - Called once when the card enters the viewport
+ */
+const StepCard = memo(function StepCard({ step, index, onVisible }) {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: '-50px' });
   const shouldReduceMotion = useReducedMotion();
 
-  // useEffect replaced by ref callback via isInView — report once visible
   useEffect(() => {
     if (isInView) onVisible(index);
   }, [isInView, index, onVisible]);
@@ -50,14 +68,29 @@ const StepCard = ({ step, index, onVisible }) => {
       </div>
     </motion.div>
   );
+});
+
+StepCard.propTypes = {
+  step: PropTypes.shape({
+    id: PropTypes.number.isRequired,
+    title: PropTypes.string.isRequired,
+    description: PropTypes.string.isRequired,
+    icon: PropTypes.string.isRequired,
+    link: PropTypes.string,
+  }).isRequired,
+  index: PropTypes.number.isRequired,
+  onVisible: PropTypes.func.isRequired,
 };
 
+/**
+ * Main step guide component with PDF download.
+ */
 const StepGuide = () => {
   const viewedSteps = useRef(new Set());
   const completedTracked = useRef(false);
   const [isExporting, setIsExporting] = useState(false);
 
-  // Stable callback — won't trigger infinite useEffect loops
+  /** Stable callback — won't trigger infinite useEffect loops. */
   const handleStepVisible = useCallback((index) => {
     viewedSteps.current.add(index);
     if (
@@ -69,6 +102,9 @@ const StepGuide = () => {
     }
   }, []);
 
+  /**
+   * Dynamically imports jsPDF, generates a branded checklist PDF, and saves it.
+   */
   const downloadPDF = async () => {
     if (isExporting) return;
 
@@ -124,6 +160,8 @@ const StepGuide = () => {
 
       doc.save('votewise-checklist.pdf');
       trackEvent('step_guide_pdf_downloaded', { steps_count: votingSteps.length });
+    } catch (err) {
+      console.error('PDF export failed:', err);
     } finally {
       setIsExporting(false);
     }

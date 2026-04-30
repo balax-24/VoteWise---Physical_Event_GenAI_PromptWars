@@ -51,6 +51,7 @@
 | `/how-to-vote` | `HowToVote.jsx` | 8-step animated voting guide with PDF export |
 | `/timeline` | `Timeline.jsx` | Interactive 7-phase election lifecycle timeline |
 | `/find-booth` | `FindPollingBooth.jsx` | Google Maps polling booth search |
+| `/learning-lab` | `LearningLab.jsx` | 10-tool interactive election process education lab |
 | `/chat` | `Chat.jsx` | Full-screen AI civic assistant chatbot |
 | `*` | `NotFound.jsx` | 404 page for unknown routes |
 
@@ -68,8 +69,8 @@ All route changes use **Framer Motion `AnimatePresence`** with a fade + 8px vert
 - Sticky positioning (`sticky top-0 z-50`)
 - Active route highlighting via `useLocation`
 - Desktop: horizontal link bar
-- Mobile: compact bottom strip (all 5 routes)
-- Google Translate widget (`<LanguageSwitcher />`) embedded in the right section
+- Mobile: compact bottom strip for all primary routes
+- On-demand Google Translate widget (`<LanguageSwitcher />`) embedded in the right section
 - Full ARIA: `role="navigation"`, `aria-label`, `aria-current="page"` on active link
 
 ---
@@ -108,6 +109,23 @@ All route changes use **Framer Motion `AnimatePresence`** with a fade + 8px vert
 
 ---
 
+### `ElectionLearningLab.jsx`
+**Purpose:** Challenge 2 interactive education hub with ten hands-on tools.
+
+**Features:**
+- **Mock voting booth simulator:** Walks through queue, officer checks, ink, EVM, VVPAT, and exit.
+- **Personalized voter journey builder:** Adapts steps for first-time/returning voters, registration status, ID readiness, and support needs.
+- **Timeline quiz mode:** Checks election-process knowledge with immediate feedback and score tracking.
+- **Myth vs fact cards:** Reveals corrections for common voting misconceptions.
+- **Personalized exports:** Downloads a plan PDF and `.ics` calendar reminder.
+- **Official source panel:** Links users to ECI voter services, electoral search, and candidate affidavits.
+- **Election glossary:** Searchable cards for EPIC, EVM, VVPAT, MCC, NOTA, BLO, and postal ballot.
+- **Accessible voting guide:** Dedicated support checklist for senior citizens, PwD voters, and assistance planning.
+- **Voice narration:** Uses browser speech synthesis to read the personalized plan aloud.
+- **Readiness progress tracker:** Persists checklist completion in localStorage and shows percent readiness.
+
+---
+
 ### `StepGuide.jsx`
 **Purpose:** 8-step animated guide for voting day, with PDF export.
 
@@ -140,21 +158,24 @@ All route changes use **Framer Motion `AnimatePresence`** with a fade + 8px vert
 ---
 
 ### `FAQSection.jsx`
-**Purpose:** Accordion FAQ, seeded from static defaults, optionally enriched from Firestore.
+**Purpose:** Accordion FAQ, seeded from static defaults, optionally enriched from Firestore when Firebase is configured.
 
 **Features:**
 - **Static defaults:** 3 pre-defined Q&A pairs always present
-- **Dynamic questions:** On mount, queries `faq_analytics` Firestore collection (top 5 logged questions) and appends them as community FAQs
+- **Dynamic questions:** During browser idle time, queries `faq_analytics` Firestore collection (top 5 logged questions) and appends them as community FAQs
+- **Performance guard:** Skips Firebase imports entirely when Firebase env vars are missing/placeholder
 - **Accordion toggle:** `aria-expanded`, `aria-controls`, `role="region"`, and `aria-labelledby` wired correctly
 - **Always-rendered panels:** Answer `div`s are always in the DOM (toggled with `hidden`/`block`) so `aria-controls` IDs are always valid
 
 ---
 
 ### `LanguageSwitcher.jsx`
-**Purpose:** Renders the Google Translate widget mount point.
+**Purpose:** Loads the Google Translate widget on demand.
 
 **Features:**
-- Renders `<div id="google_translate_element">` which the global `googleTranslateElementInit()` script (in `index.html`) initialises
+- Renders an accessible language button and `<div id="google_translate_element">` mount point
+- Injects the Google Translate script only after activation
+- Announces loading and failure states with `aria-live`
 - Supports 10 Indian languages: Hindi, Tamil, Telugu, Bengali, Marathi, Gujarati, Kannada, Malayalam, Punjabi, Urdu
 
 ---
@@ -257,7 +278,7 @@ All functions check `if (!db)` and skip gracefully in local dev without Firebase
 
 **Rate limiting:** Session counts tracked in a module-level `Map<userId, count>`. Throws if `count >= 10` before calling the API.
 
-**Input sanitisation:** `text.replace(/<[^>]*>/g, '')` strips all HTML tags.
+**Input sanitisation:** Removes script/style blocks, HTML tags, event-handler attributes, `javascript:` URLs, and `data:text/html` payloads before any Gemini call.
 
 ---
 
@@ -323,9 +344,15 @@ Fired via `window.gtag('event', ...)` when GA4 is configured.
 |---|---|---|
 | `chat_question_asked` | `useChat.js` after successful Gemini response | `{ question: string }` |
 | `timeline_phase_clicked` | `ElectionTimeline.jsx` on "Ask AI about this" click | `{ phase: string }` |
+| `personalized_journey_built` | `ElectionLearningLab.jsx` when a voter plan is built | profile selections |
+| `timeline_quiz_answered` | `ElectionLearningLab.jsx` quiz submission | `{ question_id, correct }` |
+| `myth_fact_revealed` | `ElectionLearningLab.jsx` myth card reveal | `{ myth }` |
+| `calendar_exported` | `ElectionLearningLab.jsx` calendar reminder download | _(none)_ |
+| `personalized_pdf_downloaded` | `ElectionLearningLab.jsx` plan PDF download | _(none)_ |
+| `voice_narration_started` | `ElectionLearningLab.jsx` speech synthesis | _(none)_ |
 | `step_guide_completed` | `StepGuide.jsx` when all 8 cards enter viewport | _(none)_ |
-| `language_switched` | `LanguageSwitcher.jsx` (hook into Google Translate callback) | _(none)_ |
 | `polling_booth_searched` | `PollingFinder.jsx` on form submit | `{ location: string }` |
+| `web_vital` | `performance.js` via `PerformanceObserver` | `{ metric_name, metric_value }` |
 
 ---
 
@@ -335,9 +362,10 @@ Fired via `window.gtag('event', ...)` when GA4 is configured.
 |---|---|
 | **Environment variables** | All API keys via `VITE_*` in `.env` (never hardcoded) |
 | **`.env` gitignored** | `.env` excluded; `.env.example` committed with placeholders |
-| **Input sanitisation** | `sanitizeInput()` strips HTML from all chat inputs before Gemini |
+| **Input sanitisation** | `sanitizeInput()` strips script/style blocks, tags, handler attributes, and unsafe URL payloads before Gemini |
 | **Rate limiting** | Max 10 Gemini requests per session per `userId` |
-| **CSP headers** | Restrictive Content-Security-Policy in `firebase.json` |
+| **Safe markdown links** | Bot markdown links allow only `http:`, `https:`, and `mailto:` URLs |
+| **CSP headers** | Restrictive Content-Security-Policy in `firebase.json` and `nginx.conf` |
 | **Firebase graceful fallback** | `null` checks prevent crashes when Firebase isn't configured |
 | **Anonymous auth** | No PII collected — sessions tracked only by anonymous UID |
 | **`noopener noreferrer`** | All external links use both attributes |
@@ -346,14 +374,20 @@ Fired via `window.gtag('event', ...)` when GA4 is configured.
 
 ## Testing
 
-Tests live in `tests/` and run with `vitest run`.
+Tests live in `tests/` and run with `vitest run`; coverage runs with `vitest run --coverage`.
 
 | File | Coverage |
 |---|---|
-| `geminiClient.test.js` | `sanitizeInput` HTML stripping, `MAX_REQUESTS_PER_SESSION` value |
+| `geminiClient.test.js` | Sanitization, streaming, missing-key failures, and request limits |
 | `electionSteps.test.js` | All 7 timeline phases and 8 voting steps have correct field types |
-| `firestoreHelpers.test.js` | `saveMessage` returns doc ID; `getChatHistory` maps docs correctly (mocked Firestore) |
-| `ChatBot.test.jsx` | Renders welcome message; calls `sendMessage` on form submit |
-| `accessibility.test.jsx` | Zero axe violations on Home and HowToVote pages (via `jest-axe`) |
+| `firestoreHelpers.test.js` | Save, read, FAQ logging, and failure fallbacks with mocked Firestore |
+| `ChatBot.test.jsx` | Welcome state, submissions, guided journeys, limits, and safe markdown links |
+| `ElectionLearningLab.test.jsx` | Simulator, journey builder, quiz, myth/fact, glossary, exports, narration, and readiness tracking |
+| `electionLearning.test.js` | Plan generation, readiness scoring, calendar content, and text-file download helpers |
+| `useChat.test.jsx` / `useAuth.test.jsx` | Chat streaming lifecycle and anonymous auth fallback/sign-in |
+| `performance.test.js` | Web Vitals observer registration and GA4 reporting |
+| `accessibility.test.jsx` | Zero axe violations on key pages (via `jest-axe`) |
+
+Current local result: **127/127 tests passing** with enforced global coverage thresholds of 85% statements, 75% branches, 90% functions, and 90% lines.
 
 **Setup file (`tests/setup.js`):** Polyfills `IntersectionObserver` and `Element.prototype.scrollIntoView` for jsdom.

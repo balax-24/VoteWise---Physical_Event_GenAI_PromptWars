@@ -1,7 +1,22 @@
+/**
+ * @file Firestore helpers — message persistence and FAQ analytics.
+ *
+ * All functions check `if (!db)` and skip gracefully when Firebase
+ * is not configured, enabling local development without credentials.
+ *
+ * @module firebase/firestoreHelpers
+ */
+
 import { db } from './config';
 import { collection, addDoc, getDocs, query, orderBy, serverTimestamp } from 'firebase/firestore';
 
-// Save message to user session
+/**
+ * Persists a chat message to `sessions/{userId}/messages`.
+ *
+ * @param   {string} userId  - Anonymous session UID
+ * @param   {{ text: string, sender: string }} message - Message payload
+ * @returns {Promise<string|null>} Firestore document ID, or null on failure
+ */
 export const saveMessage = async (userId, message) => {
   if (!db) {
     console.warn('Firestore not initialized. Skipping saveMessage.');
@@ -21,7 +36,12 @@ export const saveMessage = async (userId, message) => {
   }
 };
 
-// Get chat history for user
+/**
+ * Fetches all messages for a user session, ordered by timestamp.
+ *
+ * @param   {string} userId - Anonymous session UID
+ * @returns {Promise<Array<{ id: string, text: string, sender: string }>>}
+ */
 export const getChatHistory = async (userId) => {
   if (!db) {
     console.warn('Firestore not initialized. Returning empty history.');
@@ -43,7 +63,12 @@ export const getChatHistory = async (userId) => {
   }
 };
 
-// Log popular questions for FAQ analytics
+/**
+ * Logs a user question to the `faq_analytics` collection for FAQ enrichment.
+ *
+ * @param {string} question - Raw question text
+ * @returns {Promise<void>}
+ */
 export const logQuestion = async (question) => {
   if (!db) {
     console.warn('Firestore not initialized. Skipping logQuestion.');

@@ -1,0 +1,21 @@
+{
+  "name": "VoteWise",
+  "short_name": "VoteWise",
+  "description": "AI-powered interactive election guide for civic education",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8f6f1",
+  "theme_color": "#1a3a5c",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["education", "government"],
+  "lang": "en-IN",
+  "dir": "ltr"
+}

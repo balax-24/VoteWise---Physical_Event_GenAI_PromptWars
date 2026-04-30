@@ -1,3 +1,9 @@
+/**
+ * @file Application configuration — constants, guided journeys, and starter questions.
+ * @module config/appConfig
+ */
+
+/** @type {number} Maximum Gemini requests per anonymous session. */
 export const SESSION_REQUEST_LIMIT = 10;
 
 export const OFFICIAL_LINKS = {

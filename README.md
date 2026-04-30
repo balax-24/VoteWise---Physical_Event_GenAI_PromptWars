@@ -6,7 +6,7 @@
 
 **An AI-powered interactive election guide for every citizen.**
 
-[![React](https://img.shields.io/badge/React-18-61dafb?style=flat-square&logo=react)](https://react.dev)
+[![React](https://img.shields.io/badge/React-19-61dafb?style=flat-square&logo=react)](https://react.dev)
 [![Vite](https://img.shields.io/badge/Vite-8-646cff?style=flat-square&logo=vite)](https://vite.dev)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-38bdf8?style=flat-square&logo=tailwindcss)](https://tailwindcss.com)
 [![Firebase](https://img.shields.io/badge/Firebase-Hosting-orange?style=flat-square&logo=firebase)](https://firebase.google.com)
@@ -46,6 +46,7 @@ Built for the **Gen AI Academy — Civic Education / Election Assistance** verti
 - 🤖 A **Gemini 1.5 Flash AI chatbot** that answers election Q&A in plain language
 - 🗓️ An **interactive 7-phase election timeline** with scroll animations
 - 🚶 An **8-step animated voting guide** with PDF export
+- 🧪 A **10-tool election learning lab** with simulator, quiz, glossary, myths, exports, and readiness tracking
 - 📍 A **Google Maps polling booth finder**
 - 🌐 **Google Translate** support for 10 Indian languages
 - 🔒 **Firebase Auth + Firestore** for session management and history persistence
@@ -64,6 +65,7 @@ Built for the **Gen AI Academy — Civic Education / Election Assistance** verti
 |---|---|
 | 🤖 **AI Chatbot** | Streaming Gemini 1.5 Flash responses with Markdown rendering |
 | 🧭 **Guided Journeys** | Goal-based flows for first-time voters, polling day, booth lookup, and counting |
+| 🧪 **Election Learning Lab** | Mock booth simulator, personalized journey builder, quiz mode, myths, glossary, exports, sources, accessibility guide, narration, and readiness tracker |
 | 🗓️ **Election Timeline** | Animated 7-phase alternating timeline (desktop & mobile) |
 | 🚶 **Step Guide** | 8-step voting guide with PDF checklist download |
 | 📍 **Polling Finder** | Google Maps embed with location search |
@@ -146,8 +148,11 @@ Firestore (save user msg)                   onChunk() → state update → UI re
 **Performance and maintainability highlights:**
 - Route-level code splitting keeps non-chat pages lighter.
 - `jspdf` and guided journey UI are lazy-loaded only when needed.
+- Google Translate loads on demand instead of blocking first paint.
+- Firestore-backed FAQ enrichment waits for idle time and is skipped entirely when Firebase is not configured.
+- Web Vitals monitoring reports LCP, FID, and CLS to GA4 when analytics is enabled.
 - Shared `appConfig` and `analytics` utilities reduce duplicated strings and tracking logic.
-- CI validates lint, tests, and production builds on every push to `main`.
+- CI validates lint, tests, coverage, and production builds on every push to `main`.
 
 ---
 
@@ -283,8 +288,10 @@ firebase deploy
 ```bash
 npm run dev       # Start development server (localhost:5173)
 npm run build     # Production build → dist/
+npm run lint      # ESLint quality + accessibility rules
 npm run preview   # Preview production build locally
 npm test          # Run all tests (Vitest)
+npm run test:coverage # Run tests with enforced coverage thresholds
 ```
 
 ---
@@ -298,22 +305,28 @@ votewise/
 ├── src/
 │   ├── components/
 │   │   ├── ChatBot.jsx          ← Gemini streaming chatbot
+│   │   ├── ElectionLearningLab.jsx ← 10-tool interactive education lab
 │   │   ├── ElectionTimeline.jsx ← 7-phase scroll timeline
+│   │   ├── EligibilityChecker.jsx
 │   │   ├── ErrorBoundary.jsx    ← Runtime error catch
-│   │   ├── FAQSection.jsx       ← Accordion FAQ (Firestore-enriched)
+│   │   ├── FAQSection.jsx       ← Idle Firestore-enriched accordion FAQ
 │   │   ├── Footer.jsx           ← Site footer with nav + official links
 │   │   ├── GuidedJourneyGrid.jsx← Goal-based assistant quick-start cards
-│   │   ├── LanguageSwitcher.jsx ← Google Translate widget
+│   │   ├── LanguageSwitcher.jsx ← On-demand Google Translate widget
 │   │   ├── Navbar.jsx           ← Responsive navigation bar
 │   │   ├── PollingFinder.jsx    ← Maps embed + search
-│   │   └── StepGuide.jsx        ← 8-step voting guide + PDF
+│   │   ├── StepGuide.jsx        ← 8-step voting guide + PDF
+│   │   └── ThemeToggle.jsx
 │   ├── config/
-│   │   └── appConfig.js         ← Shared prompts, limits, and official links
+│   │   ├── appConfig.js         ← Shared prompts, limits, and official links
+│   │   ├── env.js               ← Centralized VITE_* validation
+│   │   └── navigation.js
 │   ├── pages/
 │   │   ├── Chat.jsx
 │   │   ├── FindPollingBooth.jsx
 │   │   ├── Home.jsx
 │   │   ├── HowToVote.jsx
+│   │   ├── LearningLab.jsx
 │   │   ├── NotFound.jsx         ← 404 page
 │   │   └── Timeline.jsx
 │   ├── firebase/
@@ -323,24 +336,31 @@ votewise/
 │   │   └── geminiClient.js      ← API wrapper + rate limit + sanitise
 │   ├── hooks/
 │   │   ├── useAuth.js           ← Anonymous auth hook
-│   │   └── useChat.js           ← Chat state + streaming + Firestore
+│   │   ├── useChat.js           ← Chat state + streaming + Firestore
+│   │   ├── useKeyboardShortcut.js
+│   │   └── useTheme.js
 │   ├── lib/
-│   │   └── analytics.js         ← Shared GA4 event + pageview helpers
+│   │   ├── analytics.js         ← Shared GA4 event + pageview helpers
+│   │   ├── chatExport.js
+│   │   └── performance.js       ← Web Vitals monitoring
 │   ├── data/
+│   │   ├── electionLearning.js  ← Lab data, helpers, calendar export
 │   │   └── electionSteps.js     ← Timeline phases + voting steps data
 │   ├── App.jsx                  ← Router + AnimatePresence + ErrorBoundary
-│   ├── App.css                  ← Cleared (styles in index.css)
 │   ├── index.css                ← Tailwind @theme tokens + global styles
 │   └── main.jsx                 ← React root mount
 ├── tests/
 │   ├── accessibility.test.jsx
 │   ├── ChatBot.test.jsx
 │   ├── ElectionTimeline.test.jsx
+│   ├── ElectionLearningLab.test.jsx
+│   ├── electionLearning.test.js
 │   ├── electionSteps.test.js
 │   ├── firestoreHelpers.test.js
 │   ├── geminiClient.test.js
 │   ├── Home.test.jsx
 │   ├── PollingFinder.test.jsx
+│   ├── use*.test.jsx
 │   └── setup.js
 ├── .env.example
 ├── .firebaserc
@@ -359,6 +379,7 @@ Tests use **Vitest** + **React Testing Library** + **jest-axe**.
 
 ```bash
 npm test
+npm run test:coverage
 ```
 
 | Test File | What It Tests |
@@ -368,12 +389,26 @@ npm test
 | `firestoreHelpers.test.js` | `saveMessage` + `getChatHistory` with mocked Firestore |
 | `ChatBot.test.jsx` | Welcome state, guided journeys, form submit, and session-limit UI |
 | `ElectionTimeline.test.jsx` | Contextual navigation from timeline into chat and analytics tracking |
+| `ElectionLearningLab.test.jsx` | Simulator, journey builder, quiz, myths, glossary, exports, narration, and readiness tracking |
+| `electionLearning.test.js` | Personalized plan generation, readiness scoring, calendar content, and file downloads |
 | `Home.test.jsx` | Guided journey entry points on the landing page |
 | `PollingFinder.test.jsx` | Fallback mode and GA4 search event tracking |
-| `accessibility.test.jsx` | Zero axe violations on Home and HowToVote pages |
-| `CI workflow` | Runs lint, tests, and build on every push to `main` |
+| `App.test.jsx` | App shell, route analytics, and GA4 bootstrap |
+| `useChat.test.jsx` / `useAuth.test.jsx` | Streaming chat lifecycle and anonymous auth fallback/sign-in |
+| `performance.test.js` | Web Vitals observer registration and GA4 reporting |
+| `accessibility.test.jsx` | Zero axe violations on key pages |
+| `CI workflow` | Runs lint, tests, coverage, and build on every push to `main` |
 
-**Results:** 21/21 tests passing locally ✅
+Coverage is enforced in `vite.config.js` with global thresholds:
+
+| Metric | Threshold | Current |
+|---|---:|---:|
+| Statements | 85% | 89.90% |
+| Branches | 75% | 77.64% |
+| Functions | 90% | 92.30% |
+| Lines | 90% | 93.08% |
+
+**Results:** 127/127 tests passing locally ✅
 
 ---
 
@@ -395,6 +430,7 @@ VoteWise is built to WCAG 2.1 AA standards:
 - ✅ Axe-clean on all pages (verified by automated tests)
 - ✅ Loading and error states announced with assistive-friendly markup
 - ✅ Reduced-motion-friendly transitions for users who prefer less animation
+- ✅ Third-party widgets load on demand to avoid delaying the primary content
 
 ---
 
@@ -418,7 +454,7 @@ VoteWise is built to WCAG 2.1 AA standards:
 - [ ] **Multi-state election data** — dynamically load state-specific timelines and booth locators
 - [ ] **User accounts** — optional login to persist history across devices
 - [ ] **Admin dashboard** — view FAQ analytics and most-asked questions
-- [x] **Code splitting** — pages, guided journeys, and PDF generation are lazy-loaded to reduce initial bundle size
+- [x] **Code splitting** — pages, guided journeys, PDF generation, Translate, and Firestore FAQ enrichment are lazy-loaded to reduce initial bundle size
 - [ ] **VVPAT explanation** — animated explainer for voter-verifiable paper audit trail
 - [ ] **RTL support** — for Urdu language direction
 

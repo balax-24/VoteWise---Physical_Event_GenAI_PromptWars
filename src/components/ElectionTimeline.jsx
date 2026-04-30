@@ -1,22 +1,39 @@
-import { useRef } from 'react';
+/**
+ * @file ElectionTimeline — Scroll-triggered 7-phase interactive timeline.
+ *
+ * Desktop: alternating left/right cards with a centred vertical connector.
+ * Mobile: single-column stack with left-aligned icon column.
+ * Each phase links to the AI chat with a contextual question.
+ *
+ * @module components/ElectionTimeline
+ */
+
+import { useRef, memo, useCallback } from 'react';
 import { motion, useInView, useReducedMotion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import PropTypes from 'prop-types';
 import { timelinePhases } from '../data/electionSteps';
 import { trackEvent } from '../lib/analytics';
 
-const TimelineItem = ({ phase, index }) => {
+/**
+ * Individual timeline phase card (mobile + desktop).
+ * @param {Object} props
+ * @param {{ phase: string, icon: string, description: string, color: string }} props.phase
+ * @param {number} props.index
+ */
+const TimelineItem = memo(function TimelineItem({ phase, index }) {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: '-80px' });
   const navigate = useNavigate();
   const isEven = index % 2 === 0;
   const shouldReduceMotion = useReducedMotion();
 
-  const handleLearnMore = () => {
+  const handleLearnMore = useCallback(() => {
     trackEvent('timeline_phase_clicked', { phase: phase.phase });
     navigate('/chat', {
       state: { initialQuestion: `Tell me more about the "${phase.phase}" phase of the election process.` }
     });
-  };
+  }, [navigate, phase.phase]);
 
   return (
     <div ref={ref} className="relative mb-10 md:mb-8">
@@ -121,11 +138,29 @@ const TimelineItem = ({ phase, index }) => {
       </div>
     </div>
   );
+});
+
+TimelineItem.propTypes = {
+  /** Timeline phase data object */
+  phase: PropTypes.shape({
+    phase: PropTypes.string.isRequired,
+    icon: PropTypes.string.isRequired,
+    description: PropTypes.string.isRequired,
+    color: PropTypes.string.isRequired,
+  }).isRequired,
+  /** Zero-based index in the phases array */
+  index: PropTypes.number.isRequired,
 };
 
+/**
+ * Full election timeline with vertical connector line.
+ */
 const ElectionTimeline = () => {
   return (
     <div className="container mx-auto px-4 py-12 max-w-5xl">
+      {/* Heading hierarchy: h1 is on the page, h2 here, h3 in each TimelineItem */}
+      <h2 className="sr-only">Election Phases</h2>
+
       {/* Vertical connector line — desktop only, centred */}
       <div className="relative">
         <div

@@ -1,8 +1,19 @@
+/**
+ * @file useChat — Chat state management with Gemini streaming and Firestore persistence.
+ *
+ * Manages the full lifecycle: history loading → message sending → streaming →
+ * Firestore saves (fire-and-forget) → GA4 tracking. Includes cancellation
+ * flags to prevent state updates on unmounted components.
+ *
+ * @module hooks/useChat
+ */
+
 import { useState, useEffect, useCallback } from 'react';
 import { getGeminiResponseStream, getRemainingRequests } from '../gemini/geminiClient';
 import { saveMessage, getChatHistory, logQuestion } from '../firebase/firestoreHelpers';
 import { trackEvent } from '../lib/analytics';
 
+/** @type {import('./useChat').Message} Welcome message displayed for new sessions. */
 const WELCOME_MESSAGE = {
   id: 'welcome',
   sender: 'bot',
@@ -10,6 +21,12 @@ const WELCOME_MESSAGE = {
   timestamp: new Date(),
 };
 
+/**
+ * Custom hook that manages chat state, Gemini streaming, and Firestore persistence.
+ *
+ * @param   {string|undefined} userId - Firebase anonymous UID
+ * @returns {{ messages: Array, sendMessage: Function, isLoading: boolean, historyLoading: boolean, error: string|null, remainingRequests: number }}
+ */
 export const useChat = (userId) => {
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);

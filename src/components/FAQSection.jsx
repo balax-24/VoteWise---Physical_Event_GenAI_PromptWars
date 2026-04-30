@@ -1,7 +1,14 @@
-import { useState, useEffect } from 'react';
-import { db } from '../firebase/config';
-import { collection, getDocs, limit, query } from 'firebase/firestore';
+/**
+ * @file FAQSection — Accordion FAQ, seeded from static defaults,
+ * optionally enriched with community questions from Firestore.
+ *
+ * @module components/FAQSection
+ */
 
+import { memo, useState, useEffect, useCallback } from 'react';
+import { HAS_FIREBASE } from '../config/env';
+
+/** @type {{ question: string, answer: string }[]} */
 const DEFAULT_FAQS = [
   {
     question: "How do I check if I am registered to vote?",
@@ -17,44 +24,61 @@ const DEFAULT_FAQS = [
   }
 ];
 
-const FAQSection = () => {
+const FAQSection = memo(function FAQSection() {
   const [faqs, setFaqs] = useState(DEFAULT_FAQS);
   const [isOpen, setIsOpen] = useState({});
 
   useEffect(() => {
+    if (!HAS_FIREBASE) return undefined;
+
+    let cancelled = false;
+    const requestIdle = window.requestIdleCallback ?? ((callback) => window.setTimeout(callback, 0));
+    const cancelIdle = window.cancelIdleCallback ?? window.clearTimeout;
+
     const fetchFaqs = async () => {
-      if (!db) return;
       try {
+        const [{ db }, { collection, getDocs, limit, query }] = await Promise.all([
+          import('../firebase/config'),
+          import('firebase/firestore'),
+        ]);
+
+        if (!db) return;
+
         const faqRef = collection(db, 'faq_analytics');
-        const q = query(faqRef, limit(5));
-        const snapshot = await getDocs(q);
-        
-        if (!snapshot.empty) {
-          // Extract questions and create unique list
-          const loggedQuestions = snapshot.docs.map(doc => doc.data().question);
-          const uniqueQuestions = [...new Set(loggedQuestions)].filter(Boolean);
-          
-          if (uniqueQuestions.length > 0) {
-            // Map to FAQ format (we'll need a generic answer or leave it for AI)
-            const dynamicFaqs = uniqueQuestions.map(q => ({
-              question: q,
-              answer: "Ask our AI Chatbot for a detailed answer to this community question!"
-            }));
-            // Merge with defaults
-            setFaqs([...DEFAULT_FAQS, ...dynamicFaqs].slice(0, 6));
-          }
+        const faqQuery = query(faqRef, limit(5));
+        const snapshot = await getDocs(faqQuery);
+
+        if (cancelled || snapshot.empty) return;
+
+        const loggedQuestions = snapshot.docs.map((doc) => doc.data().question);
+        const uniqueQuestions = [...new Set(loggedQuestions)].filter(Boolean);
+
+        if (uniqueQuestions.length > 0) {
+          const dynamicFaqs = uniqueQuestions.map((question) => ({
+            question,
+            answer: "Ask our AI Chatbot for a detailed answer to this community question!"
+          }));
+          setFaqs([...DEFAULT_FAQS, ...dynamicFaqs].slice(0, 6));
         }
       } catch (error) {
         console.error('Error fetching FAQs:', error);
       }
     };
 
-    fetchFaqs();
+    const idleId = requestIdle(() => {
+      void fetchFaqs();
+    });
+
+    return () => {
+      cancelled = true;
+      cancelIdle(idleId);
+    };
   }, []);
 
-  const toggleOpen = (index) => {
-    setIsOpen(prev => ({ ...prev, [index]: !prev[index] }));
-  };
+  /** Toggle the accordion for the given FAQ index. */
+  const toggleOpen = useCallback((index) => {
+    setIsOpen((prev) => ({ ...prev, [index]: !prev[index] }));
+  }, []);
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
@@ -65,13 +89,13 @@ const FAQSection = () => {
             <button
               onClick={() => toggleOpen(index)}
               className="w-full flex justify-between items-center px-6 py-4 text-left font-semibold text-primary hover:bg-bg/50 transition-colors duration-200"
-              aria-expanded={isOpen[index]}
+              aria-expanded={!!isOpen[index]}
               aria-controls={`faq-answer-${index}`}
             >
               <span id={`faq-question-${index}`} className="text-sm md:text-base">{faq.question}</span>
-              <span className="text-accent text-xl">{isOpen[index] ? '−' : '+'}</span>
+              <span className="text-accent text-xl" aria-hidden="true">{isOpen[index] ? '−' : '+'}</span>
             </button>
-            <div 
+            <div
               id={`faq-answer-${index}`}
               className={`px-6 py-4 bg-bg/30 text-sm text-text border-t border-border ${isOpen[index] ? 'block' : 'hidden'}`}
               role="region"
@@ -84,6 +108,6 @@ const FAQSection = () => {
       </div>
     </div>
   );
-};
+});
 
 export default FAQSection;

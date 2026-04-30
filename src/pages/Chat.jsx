@@ -1,29 +1,19 @@
-import { lazy, Suspense, useEffect, useRef } from 'react';
+/**
+ * @file Chat page — hosts the AI civic assistant.
+ * Passes an optional initial question (from guided‑journey links) to the ChatBot
+ * via location state. ChatBot manages its own auth / chat lifecycle internally
+ * so this page does NOT duplicate those hooks.
+ * @module pages/Chat
+ */
+
+import { lazy, Suspense } from 'react';
 import { useLocation } from 'react-router-dom';
-import { useChat } from '../hooks/useChat';
-import { useAuth } from '../hooks/useAuth';
 
 const ChatBot = lazy(() => import('../components/ChatBot'));
 
 const Chat = () => {
   const location = useLocation();
-  const { user, loading: authLoading } = useAuth();
-  const { sendMessage, historyLoading } = useChat(user?.uid);
-  // Track whether we've already fired the initial question
-  const firedRef = useRef(false);
-
-  useEffect(() => {
-    // Wait until auth AND history are both ready, then fire once
-    if (authLoading || historyLoading) return;
-    if (!user?.uid) return;
-    if (!location.state?.initialQuestion) return;
-    if (firedRef.current) return;
-
-    firedRef.current = true;
-    sendMessage(location.state.initialQuestion);
-    // Clear navigation state so it won't replay on browser back/forward
-    window.history.replaceState({}, document.title);
-  }, [authLoading, historyLoading, user?.uid, location.state, sendMessage]);
+  const initialQuestion = location.state?.initialQuestion ?? null;
 
   return (
     <main id="main-content" role="main" className="flex-1 bg-bg/50 py-8 px-4">
@@ -43,7 +33,7 @@ const Chat = () => {
           </div>
         }
       >
-        <ChatBot />
+        <ChatBot initialQuestion={initialQuestion} />
       </Suspense>
     </main>
   );

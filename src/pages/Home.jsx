@@ -1,8 +1,23 @@
-import { Link } from 'react-router-dom';
-import FAQSection from '../components/FAQSection';
-import { GUIDED_JOURNEYS } from '../config/appConfig';
+/**
+ * @file Home page — Landing page with hero, guided journeys, feature cards,
+ * voter eligibility checker, and FAQ section.
+ *
+ * @module pages/Home
+ */
 
-const Home = () => {
+import { Link, useNavigate } from 'react-router-dom';
+import { memo } from 'react';
+import FAQSection from '../components/FAQSection';
+import EligibilityChecker from '../components/EligibilityChecker';
+import { GUIDED_JOURNEYS } from '../config/appConfig';
+import { useKeyboardShortcut } from '../hooks/useKeyboardShortcut';
+
+const Home = memo(function Home() {
+  const navigate = useNavigate();
+
+  // Ctrl+K / ⌘K → jump to chat (available globally on this page)
+  useKeyboardShortcut('k', () => navigate('/chat'));
+
   return (
     <main id="main-content" role="main" className="flex-1">
       {/* Hero Section */}
@@ -31,9 +46,14 @@ const Home = () => {
               How to Vote
             </Link>
           </div>
+          {/* Keyboard shortcut hint */}
+          <p className="mt-4 text-xs text-surface/40">
+            Press <kbd className="px-1.5 py-0.5 bg-surface/10 rounded text-surface/60 font-mono text-[10px]">Ctrl</kbd>+<kbd className="px-1.5 py-0.5 bg-surface/10 rounded text-surface/60 font-mono text-[10px]">K</kbd> to open the AI assistant anytime
+          </p>
         </div>
       </section>
 
+      {/* Guided Journeys */}
       <section className="mx-auto max-w-6xl px-4 py-14">
         <div className="mb-8 flex flex-col gap-2 text-center">
           <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent">Guided Assistant</p>
@@ -59,9 +79,23 @@ const Home = () => {
         </div>
       </section>
 
+      {/* Eligibility Checker — Unique interactive feature */}
+      <section className="py-14 px-4 bg-primary/5 border-y border-border">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-8">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-accent">Quick Check</p>
+            <h2 className="font-display text-3xl font-bold text-primary mt-2">Am I Eligible to Vote?</h2>
+            <p className="mx-auto max-w-lg text-sm text-muted mt-2">
+              Instantly check your voter eligibility based on your date of birth. No data is sent — everything is calculated on your device.
+            </p>
+          </div>
+          <EligibilityChecker />
+        </div>
+      </section>
+
       {/* Feature Grid */}
       <section className="py-16 px-4 bg-bg max-w-6xl mx-auto">
-        <div className="grid md:grid-cols-3 gap-8">
+        <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-8">
           {/* Card 1 */}
           <div className="bg-surface p-6 rounded-xl shadow-md border border-border hover:shadow-lg transition-shadow duration-300">
             <div className="text-3xl mb-4" role="img" aria-label="Timeline">🗓️</div>
@@ -91,6 +125,16 @@ const Home = () => {
               Ask About Rights →
             </Link>
           </div>
+
+          {/* Card 4 */}
+          <div className="bg-surface p-6 rounded-xl shadow-md border border-border hover:shadow-lg transition-shadow duration-300">
+            <div className="text-3xl mb-4" role="img" aria-label="Learning lab">🧭</div>
+            <h2 className="font-display font-bold text-xl text-primary mb-2">Learning Lab</h2>
+            <p className="text-sm text-muted mb-4">Practice the booth flow, take quizzes, build a plan, and export reminders.</p>
+            <Link to="/learning-lab" className="text-sm font-semibold text-accent hover:underline">
+              Open Lab →
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -100,6 +144,6 @@ const Home = () => {
       </section>
     </main>
   );
-};
+});
 
 export default Home;

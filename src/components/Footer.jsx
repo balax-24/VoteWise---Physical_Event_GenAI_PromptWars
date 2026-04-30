@@ -1,16 +1,16 @@
+/**
+ * @file Footer — Site-wide footer with navigation and official resource links.
+ * @module components/Footer
+ */
+
+import { memo, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { OFFICIAL_LINKS } from '../config/appConfig';
+import { NAV_ITEMS } from '../config/navigation';
 
-const Footer = () => {
-  const year = new Date().getFullYear();
-
-  const links = [
-    { label: 'Home', to: '/' },
-    { label: 'How to Vote', to: '/how-to-vote' },
-    { label: 'Timeline', to: '/timeline' },
-    { label: 'Find Booth', to: '/find-booth' },
-    { label: 'Chat with AI', to: '/chat' },
-  ];
+const Footer = memo(function Footer() {
+  /** Compute the copyright year once per render. */
+  const year = useMemo(() => new Date().getFullYear(), []);
 
   return (
     <footer className="bg-primary text-surface mt-auto pt-10 pb-6 border-t border-primary/20" role="contentinfo">
@@ -32,13 +32,13 @@ const Footer = () => {
           <nav aria-label="Footer navigation">
             <p className="text-xs font-semibold text-surface/50 uppercase tracking-widest mb-3">Navigate</p>
             <ul className="space-y-2">
-              {links.map((link) => (
-                <li key={link.to}>
+              {NAV_ITEMS.map((link) => (
+                <li key={link.path}>
                   <Link
-                    to={link.to}
+                    to={link.path}
                     className="text-sm text-surface/70 hover:text-accent transition-colors duration-200"
                   >
-                    {link.label}
+                    {link.name}
                   </Link>
                 </li>
               ))}
@@ -82,6 +82,6 @@ const Footer = () => {
       </div>
     </footer>
   );
-};
+});
 
 export default Footer;

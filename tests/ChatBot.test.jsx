@@ -70,4 +70,21 @@ describe('ChatBot Component', () => {
     expect(screen.getByPlaceholderText('Session limit reached.')).toBeDisabled();
     expect(screen.getByText('0/10 remaining')).toBeInTheDocument();
   });
+
+  it('renders safe markdown links and strips unsafe markdown hrefs', () => {
+    mockChatState = {
+      ...mockChatState,
+      messages: [{
+        id: 'link-answer',
+        sender: 'bot',
+        text: '[ECI](https://eci.gov.in) [bad](javascript:alert(1))',
+      }],
+    };
+
+    render(<ChatBot />);
+
+    expect(screen.getByRole('link', { name: 'ECI' })).toHaveAttribute('href', 'https://eci.gov.in');
+    expect(screen.queryByRole('link', { name: 'bad' })).not.toBeInTheDocument();
+    expect(screen.getByText('bad')).toBeInTheDocument();
+  });
 });
